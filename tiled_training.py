@@ -2,7 +2,7 @@
 # Purpose :  Cifar100 training on tiles
 # Creation Date : 01-05-2022
 # Last Modified : 
-# Created By : vamshi
+# Created By : 
 
 import torch.nn as nn
 from torch import optim
@@ -12,41 +12,8 @@ import torch
 from data_loader import get_dataloaders
 from models import resnet9, resnet_cifar
 
-from pytorch_trainer import Trainer, metric
-
-class Accuracy(metric.Metric):
-    """ Accuracy.
-
-    Args:
-        per_pixel (boolean, optional): whether to normalize the error with number of pixels. Default: True.
-    """
-
-    def __init__(self):
-        super().__init__()
-        self.reset()
-
-    def reset(self):
-        self.correct = 0
-        self.total = 0
-
-    def add(self, predicted, target):
-        """
-        Args:
-            predicted (numpy.ndarray) : prediction from the model
-            target (numpy.ndarray) : target output value
-        """
-        predicted = np.argmax(predicted, axis=1)
-        if target.ndim == 2:
-            target = np.argmax(target, axis=1)
-        self.total += target.shape[0]
-        self.correct += (predicted == target).sum().item()
-        
-    def value(self):
-        """
-        Returns:
-            Accuracy as a percentage
-        """
-        return 100 * self.correct/self.total
+from pytorch_trainer import Trainer
+from pytorch_trainer.metric import Accuracy
 
 ### General hyper-parameters
 general_options = {
@@ -94,15 +61,5 @@ if __name__ == '__main__':
     trainer.initialize_dataloaders(get_dataloaders, **dataloader_args)
     trainer.build_model(resnet9.IncrementalResnet9, **network_args)
     #trainer.model.load_state_dict(torch.load('saved_models/cifar10_cropped_resnet_16_best.pth')['state_dict'])
-    
-    # pretrained = torch.load('saved_models/cifar10_cropped_resnet_16_best.pth')['state_dict']
-    # model_dict = trainer.model.state_dict()
-    # # 1. filter out unnecessary keys
-    # pretrained_dict = {k: v for k, v in pretrained.items() if k in model_dict}
-    # # 2. overwrite entries in the existing state dict
-    # model_dict.update(pretrained_dict) 
-    # # 3. load the new state dict
-    # trainer.model.load_state_dict(pretrained_dict, strict=False)
     # trainer.model.to(trainer.device)
-    
     trainer.train(**trainer_args)

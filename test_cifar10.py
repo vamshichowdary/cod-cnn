@@ -12,40 +12,11 @@ import numpy as np
 from data_loader import get_dataloaders
 from models import resnet_cifar
 
-from pytorch_trainer import Trainer, metric
+from pytorch_trainer import Trainer
+from pytorch_trainer.metric import Accuracy
+
+from utils import tile_predict, tilify, overlay
 # %%
-class Accuracy(metric.Metric):
-    """ Accuracy.
-
-    Args:
-        per_pixel (boolean, optional): whether to normalize the error with number of pixels. Default: True.
-    """
-
-    def __init__(self):
-        super().__init__()
-        self.reset()
-
-    def reset(self):
-        self.correct = 0
-        self.total = 0
-
-    def add(self, predicted, target):
-        """
-        Args:
-            predicted (numpy.ndarray) : prediction from the model
-            target (numpy.ndarray) : target output value
-        """
-        predicted = np.argmax(predicted, axis=1)
-        self.total += target.shape[0]
-        self.correct += (predicted == target).sum().item()
-        
-    def value(self):
-        """
-        Returns:
-            Accuracy as a percentage
-        """
-        return 100 * self.correct/self.total
-
 ### General hyper-parameters
 general_options = {
     'use_cuda' :          True,         # use GPU ?
@@ -113,28 +84,6 @@ test_dataset = datasets.CIFAR10('/home/vamshi/datasets/CIFAR_10_data/', download
 my_cmap = copy(cm.get_cmap('jet'))
 def plot_tensor(x):
     plt.imshow(x.detach().cpu().numpy().transpose(1,2,0),cmap=my_cmap)
-# %%
-import cv2
-# %%
-def overlay(base, heatmap):
-    """
-    Overlays a binary "heatmap" onto a base image
-    """
-    img = cv2.normalize(base, None, 0, 255, cv2.NORM_MINMAX, cv2.CV_8U)
-    img = cv2.resize(img, (256, 256))
-
-    heatmap = cv2.normalize(heatmap, None, 0, 255, cv2.NORM_MINMAX, cv2.CV_8U)
-    heatmap = cv2.resize(heatmap, (256, 256))
-
-    heatmap_img = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
-    heatmap_img = cv2.cvtColor(heatmap_img, cv2.COLOR_BGR2RGB)
-
-    heatmap_img[:,:,0] = np.where(heatmap>0, heatmap_img[:,:,0], 0)
-    heatmap_img[:,:,1] = np.where(heatmap>0, heatmap_img[:,:,1], 0)
-    heatmap_img[:,:,2] = np.where(heatmap>0, heatmap_img[:,:,2], 0)
-
-    fin = cv2.addWeighted(heatmap_img, 0.5, img, 1.0, 0)
-    return fin
 # %%
 itr = iter(trainer.valloader)
 # %%
