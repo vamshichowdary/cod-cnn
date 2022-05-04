@@ -35,31 +35,31 @@ trainer_args = {
     'metric_kwargs': {},
     'save_best' : True,
     'save_location' : './saved_models',
-    'save_name' : 'cifar100_cropped_12_resnet9',
+    'save_name' : 'cifar10_cropped_30_resnet18',
     'continue_training_saved_model' : None,
 }
 
 dataloader_args = {
-    'dataset': 'cifar100',
-    'batch_size' : 480,
+    'dataset': 'cifar10',
+    'batch_size' : 128,
     'shuffle' : True, 
     'num_workers': 12,
-    'crop_size': 12
+    'crop_size': 30
 }
 
 network_args = {
-    #'pretrained': False,
-    'num_classes': 100,
-    'blocks':2,
-    'freeze_block1':None
+    'pretrained': False,
+    'num_classes': 10,
+    #'blocks':2,
+    #'freeze_block1':None
 }
 
-experiment_summary = 'Training resnet9 on 12x12 cifar100 images'
+experiment_summary = 'Training resnet18 on 30x30 cifar10 images'
 
 if __name__ == '__main__':
-    trainer = Trainer('cifar100_cropped_12_resnet9', general_options, experiment_summary=experiment_summary)
+    trainer = Trainer('cifar10_cropped_30_resnet18', general_options, experiment_summary=experiment_summary)
     trainer.initialize_dataloaders(get_dataloaders, **dataloader_args)
-    trainer.build_model(resnet9.IncrementalResnet9, **network_args)
+    trainer.build_model(resnet_cifar.resnet18, **network_args)
     #trainer.model.load_state_dict(torch.load('saved_models/cifar10_cropped_resnet_16_best.pth')['state_dict'])
     # trainer.model.to(trainer.device)
     trainer.train(**trainer_args)

@@ -47,11 +47,12 @@ def overlay(base, heatmap):
     """
     Overlays a 2-channel "heatmap" onto a base image
     """
+    size = base.shape[0]
     img = cv2.normalize(base, None, 0, 255, cv2.NORM_MINMAX, cv2.CV_8U)
-    img = cv2.resize(img, (256, 256))
+    img = cv2.resize(img, (size,size))
 
     heatmap = cv2.normalize(heatmap, None, 0, 255, cv2.NORM_MINMAX, cv2.CV_8U)
-    heatmap = cv2.resize(heatmap, (256, 256))
+    heatmap = cv2.resize(heatmap, (size,size))
 
     heatmap_img = cv2.applyColorMap(heatmap, cv2.COLORMAP_JET)
     heatmap_img = cv2.cvtColor(heatmap_img, cv2.COLOR_BGR2RGB)

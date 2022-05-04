@@ -9,8 +9,9 @@ import torch.nn as nn
 from torch import optim
 import numpy as np
 
+
 from data_loader import get_dataloaders
-from models import resnet_cifar
+from models import resnet_cifar, resnet9
 
 from pytorch_trainer import Trainer
 from pytorch_trainer.metric import Accuracy
@@ -43,10 +44,10 @@ trainer_args = {
 
 dataloader_args = {
     'dataset': 'cifar10',
-    'batch_size' : 480,
+    'batch_size' : 128,
     'shuffle' : False, 
     'num_workers': 12,
-    'crop_size': 96
+    'crop_size': 32
 }
 
 network_args = {
@@ -63,7 +64,7 @@ trainer.initialize_dataloaders(get_dataloaders, **dataloader_args)
 # %%
 trainer.build_model(resnet_cifar.resnet18, **network_args)
 # %%
-trainer.model.load_state_dict(torch.load('saved_models/cifar10_cropped_8_resnet18_best.pth')['state_dict'])
+trainer.model.load_state_dict(torch.load('saved_models/cifar10_cropped_16_resnet18_best.pth')['state_dict'])
 trainer.model.to(trainer.device)
 trainer.model.eval()
 # %%
@@ -91,19 +92,23 @@ im,lab = next(itr)
 # %%
 im,lab = im.to(trainer.device), lab.to(trainer.device)
 # %%
-idx = 0
+idx = 4
 plot_tensor(im[idx])
 plt.title(classDict[str(lab[idx].item())])
 # %%
-
+x = tilify(im[idx].unsqueeze(dim=0), tile_size=16)
 # %%
-
+ops = tile_predict(x, trainer.model, batch_size=1024)
 # %%
-
+ops = ops.reshape(32,32,10)
 # %%
-
+heatmap, predmap = torch.max(ops, dim=2)
+heatmap = heatmap.detach().cpu().numpy()
+predmap = predmap.detach().cpu().numpy()
 # %%
-
+o = overlay(test_dataset.data[idx], (predmap == lab[idx].item())*heatmap)
+# %%
+plt.imshow(o)
 # %%
 
 # %%
@@ -167,46 +172,6 @@ for idx, (im,lab) in enumerate(trainer.valloader):
     if idx == 1000:
         break
     
-# %%
-
-# %%
-
-# %%
-
-# %%
-plt.imshow(test_dataset.data[idx])
-h = plt.imshow((predx == lab[idx].item())*heatmapx, cmap='jet', alpha=0.3)
-# %%
-plt.imshow(test_dataset.data[idx])
-# %%
-
-# %%
-lab
-# %%
-
-# %%
-
-# %%
-
-# %%
-import matplotlib.pylab as pl
-from matplotlib.colors import ListedColormap
-# Choose colormap
-cmap = pl.cm.jet
-# Get the colormap colors
-my_cmap = cmap(np.arange(cmap.N))
-# Set alpha
-my_cmap[:,-1] = np.linspace(0, 1, cmap.N)
-
-# Create new colormap
-my_cmap = ListedColormap(my_cmap)
-# %%
-h = plt.imshow((predx == lab[idx].item())*heatmapx, cmap=my_cmap)
-plt.colorbar(mappable=h)
-# %%
-
-# %%
-
 # %%
 
 # %%
