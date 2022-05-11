@@ -1,6 +1,7 @@
 ffcv-imagenet/
 runs*/
 saved_models*/
+attack*/
 
 
 # Byte-compiled / optimized / DLL files

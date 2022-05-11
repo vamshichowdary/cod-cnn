@@ -43,11 +43,11 @@ trainer_args = {
 }
 
 dataloader_args = {
-    'dataset': 'cifar10',
-    'batch_size' : 128,
+    'dataset': 'tiny_imagenet',
+    'batch_size' : 512,
     'shuffle' : False, 
     'num_workers': 12,
-    'crop_size': 32
+    'crop_size': 64
 }
 
 network_args = {
@@ -86,13 +86,13 @@ my_cmap = copy(cm.get_cmap('jet'))
 def plot_tensor(x):
     plt.imshow(x.detach().cpu().numpy().transpose(1,2,0),cmap=my_cmap)
 # %%
-itr = iter(trainer.valloader)
+itr = iter(trainer.trainloader)
 # %%
 im,lab = next(itr)
 # %%
 im,lab = im.to(trainer.device), lab.to(trainer.device)
 # %%
-idx = 4
+idx = 458
 plot_tensor(im[idx])
 plt.title(classDict[str(lab[idx].item())])
 # %%
@@ -315,4 +315,28 @@ for im, lab in trainer.trainloader:
 dogs = torch.cat(dogs, dim=0)
 # %%
 plot_tensor(dogs[12])
+# %%
+model = resnet_cifar.resnet34(num_classes=200)
+# %%
+model.modules
+# %%
+x = torch.randn((2,3,54,54))
+# %%
+x1 = model.conv1(x)
+x1.shape
+# %%
+x2 = model.layer1(x1)
+x2.shape
+# %%
+x3 = model.layer2(x2)
+x3.shape
+# %%
+x4 = model.layer3(x3)
+x4.shape
+# %%
+x5 = model.layer4(x4)
+x5.shape
+# %%
+x6 = model.avgpool(x5)
+x6.shape
 # %%

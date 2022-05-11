@@ -12,6 +12,9 @@ stl10_full_std = (0.26826769, 0.26104504, 0.26866837)
 stl10_train_mean = (0.44671062, 0.43980984, 0.40664645) ## train only
 stl10_train_std = (0.26034098, 0.25657727, 0.27126738)
 
+tiny_imagenet_mean = (0.04112063, 0.04112063, 0.04112063) ## train
+tiny_imagenet_std = (0.20317943, 0.20317943, 0.20317943)
+
 def get_dataloaders(dataset='cifar10', train_val_split=None, batch_size=32, crop_size=32, shuffle=True, num_workers=8, **dataset_kwargs):
     """
     Get pytorch dataloaders
@@ -76,7 +79,25 @@ def get_dataloaders(dataset='cifar10', train_val_split=None, batch_size=32, crop
 
         trainset = datasets.CIFAR100('/home/vamshi/datasets/CIFAR_100_data/', download=False, train=True, transform=crop_hflip(), **dataset_kwargs)
         test_dataset = datasets.CIFAR100('/home/vamshi/datasets/CIFAR_100_data/', download=False, train=False, transform=zero_norm(), **dataset_kwargs)
-    
+    elif dataset == 'tiny_imagenet':
+        def zero_norm():
+            return transforms.Compose([
+                transforms.ToTensor(),
+                transforms.Normalize(tiny_imagenet_mean, tiny_imagenet_std)
+        ])
+
+        # Transforms object for trainset with augmentation
+        def crop_hflip():
+            return transforms.Compose([
+                    #transforms.ToPILImage(),
+                    transforms.RandomCrop(crop_size, padding=0),
+                    transforms.RandomHorizontalFlip(), 
+                    transforms.ToTensor(),
+                    transforms.Normalize(tiny_imagenet_mean, tiny_imagenet_std)
+                ])
+                    
+        trainset = datasets.ImageFolder(root='/home/vamshi/datasets/tiny-imagenet-200/train/', transform=crop_hflip())
+        test_dataset = datasets.ImageFolder(root='/home/vamshi/datasets/tiny-imagenet-200/val/', transform=zero_norm())
     else:
         print("Dataset: {} not supported!".format(dataset))
         return

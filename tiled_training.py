@@ -35,31 +35,31 @@ trainer_args = {
     'metric_kwargs': {},
     'save_best' : True,
     'save_location' : './saved_models',
-    'save_name' : 'cifar10_cropped_30_resnet18',
+    'save_name' : 'tiny_imagenet_cropped_56_resnet34',
     'continue_training_saved_model' : None,
 }
 
 dataloader_args = {
-    'dataset': 'cifar10',
-    'batch_size' : 128,
+    'dataset': 'tiny_imagenet',
+    'batch_size' : 512,
     'shuffle' : True, 
     'num_workers': 12,
-    'crop_size': 30
+    'crop_size': 56
 }
 
 network_args = {
     'pretrained': False,
-    'num_classes': 10,
+    'num_classes': 200,
     #'blocks':2,
     #'freeze_block1':None
 }
 
-experiment_summary = 'Training resnet18 on 30x30 cifar10 images'
+experiment_summary = 'Training resnet34 (stride=1 and NO MP) on 56x56 tiny imagenet images'
 
 if __name__ == '__main__':
-    trainer = Trainer('cifar10_cropped_30_resnet18', general_options, experiment_summary=experiment_summary)
+    trainer = Trainer('tiny_imagenet_cropped_56_resnet34', general_options, experiment_summary=experiment_summary)
     trainer.initialize_dataloaders(get_dataloaders, **dataloader_args)
-    trainer.build_model(resnet_cifar.resnet18, **network_args)
+    trainer.build_model(resnet_cifar.resnet34, **network_args)
     #trainer.model.load_state_dict(torch.load('saved_models/cifar10_cropped_resnet_16_best.pth')['state_dict'])
     # trainer.model.to(trainer.device)
     trainer.train(**trainer_args)
