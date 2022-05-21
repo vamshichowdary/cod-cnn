@@ -38,7 +38,8 @@ def tile_predict(tiles, model, batch_size):
     while b <= tiles.shape[0]:
         with torch.no_grad():
             op = model( tiles[b - batch_size : min(b, tiles.shape[0])] )
-        ops.append(op)
+            #op = torch.nn.functional.softmax(op, dim=1)
+        ops.append(op.detach().cpu())
         b += batch_size
     ops = torch.cat(ops, dim=0)
     return ops
@@ -63,3 +64,55 @@ def overlay(base, heatmap):
 
     fin = cv2.addWeighted(heatmap_img, 0.5, img, 1.0, 0)
     return fin
+
+def generate_sample_heatmap(image_location, tile_size, heatmap_class=None):
+    """
+    Generates a sample heat map using tile size as tile_size using mobilenet_v2 downloaded from pytorch's model zoo
+    Args:
+        image_location: path of image
+        tile_size: tile size using which heat maps is to be generated
+        heatmap_class: the class for which heatmap needs to be generated. If None, will generate the heatmap for the predicted class
+    """
+    from PIL import Image
+    from torchvision import transforms
+    import torch
+    import matplotlib as plt
+
+    imagenet_mean, imagenet_std = [0.485, 0.456, 0.406], [0.229, 0.224, 0.225]
+
+    ## download the pretrained model from pytorch model zoo
+    model = torch.hub.load('pytorch/vision:v0.10.0', 'mobilenet_v2', pretrained=True)
+    model.eval()
+    if torch.cuda.is_available():
+        model.to('cuda')
+
+    ## load the image
+    im = Image.open(image_location)
+
+    ## preprocess with imagenet preprocessing pipeline
+    input_image = im.resize((256,256))
+    preprocess = transforms.Compose([
+        transforms.ToTensor(),
+        transforms.Normalize(mean=imagenet_mean, std=imagenet_std),
+    ])
+    input_tensor = preprocess(input_image)
+    input_batch = input_tensor.unsqueeze(0) # create a mini-batch as expected by the model  
+
+    if torch.cuda.is_available():
+        input_batch = input_batch.to('cuda')
+
+    ## pass the image through model    
+    with torch.no_grad():
+        output = model(input_batch)
+    predicted_class = output.argmax(dim=1)[0].item()
+    
+    ## generate the heatmap
+    x = tilify(input_batch, tile_size=tile_size)
+    ops = tile_predict(x, model, batch_size=1024)
+    ops = ops.reshape(256,256,1000)
+    heatmap, predmap = torch.max(ops, dim=2)
+    heatmap = heatmap.detach().cpu().numpy()
+    predmap = predmap.detach().cpu().numpy()
+
+    overlayed_heatmap = overlay(np.asarray(im.resize((256,256))), (predmap == predicted_class)*heatmap)
+    plt.imshow(overlayed_heatmap)

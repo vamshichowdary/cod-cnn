@@ -8,6 +8,8 @@ import torch
 import torch.nn as nn
 from torch import optim
 import numpy as np
+from torchvision import transforms
+from torchvision.transforms import InterpolationMode
 
 
 from data_loader import get_dataloaders
@@ -43,11 +45,12 @@ trainer_args = {
 }
 
 dataloader_args = {
-    'dataset': 'tiny_imagenet',
-    'batch_size' : 512,
-    'shuffle' : False, 
+    'dataset': 'stl10',
+    'batch_size' : 100,
+    'shuffle' : False,
     'num_workers': 12,
-    'crop_size': 64
+    'crop_size': 96,
+    'train_transform': False,
 }
 
 network_args = {
@@ -62,9 +65,10 @@ experiment_summary = 'Training cifar10 for baseline. Network: resnet50'
 trainer = Trainer('inspect', general_options, experiment_summary=experiment_summary)
 trainer.initialize_dataloaders(get_dataloaders, **dataloader_args)
 # %%
+#trainer.build_model(resnet9.IncrementalResnet9, **network_args)
 trainer.build_model(resnet_cifar.resnet18, **network_args)
 # %%
-trainer.model.load_state_dict(torch.load('saved_models/cifar10_cropped_16_resnet18_best.pth')['state_dict'])
+trainer.model.load_state_dict(torch.load('saved_models/stl10_cropped_48_resnet18_1_best.pth')['state_dict'])
 trainer.model.to(trainer.device)
 trainer.model.eval()
 # %%
@@ -75,44 +79,98 @@ from copy import copy
 import numpy as np
 from PIL import Image
 from torchvision import datasets, transforms
-classDict = {'0':'plane', '1':'car','2': 'bird', '3':'cat', '4':'deer',
-                     '5':'dog', '6':'frog', '7':'horse', '8':'ship', '9':'truck'}
-# classDict = {'0':'plane', '1':'bird','2': 'car', '3':'cat', '4':'deer',
-#                    '5':'dog', '6':'horse', '7':'monkey', '8':'ship', '9':'truck'}
+# classDict = {'0':'plane', '1':'car','2': 'bird', '3':'cat', '4':'deer',
+#                   '5':'dog', '6':'frog', '7':'horse', '8':'ship', '9':'truck'}
+classDict = {'0':'plane', '1':'bird','2': 'car', '3':'cat', '4':'deer',
+                     '5':'dog', '6':'horse', '7':'monkey', '8':'ship', '9':'truck'}
 # %%
-test_dataset = datasets.CIFAR10('/home/vamshi/datasets/CIFAR_10_data/', download=False, train=False)
+#trainset = datasets.CIFAR10('/home/vamshi/datasets/CIFAR_10_data/', download=False, train=True)
+#test_dataset = datasets.CIFAR10('/home/vamshi/datasets/CIFAR_10_data/', download=False, train=False)
+# tmp_transform = transforms.Compose([
+#                 transforms.Resize(32, interpolation=InterpolationMode.BILINEAR),
+#                 transforms.ToTensor(),
+#         ])
+trainset = datasets.STL10('/home/vamshi/datasets/STL10/', download=False, split='train')
+test_dataset = datasets.STL10('/home/vamshi/datasets/STL10/', download=False, split='test')
+# %%
+temp_loader = torch.utils.data.DataLoader(trainset, batch_size=100, shuffle=False, num_workers=12)
+# %%
+tmp_im, tmp_lab = next(iter(temp_loader))
+#%%
+trainset.data = tmp_im.numpy()
 # %%
 my_cmap = copy(cm.get_cmap('jet'))
 def plot_tensor(x):
     plt.imshow(x.detach().cpu().numpy().transpose(1,2,0),cmap=my_cmap)
 # %%
-itr = iter(trainer.trainloader)
+raw_ds = test_dataset
+itr = iter(trainer.valloader)
 # %%
 im,lab = next(itr)
 # %%
 im,lab = im.to(trainer.device), lab.to(trainer.device)
 # %%
-idx = 458
+preds = trainer.model(im).argmax(dim=1)
+# %%
+def get_heatmap(idx, tilify_tile_size):
+    x = tilify(im[idx].unsqueeze(dim=0), tile_size=tilify_tile_size)
+    ops = tile_predict(x, trainer.model, batch_size=1024)
+    ops = ops.reshape(im.shape[-1],im.shape[-1],10)
+    #ops = torch.nn.functional.softmax(ops,dim=2)
+    heatmap, predmap = torch.max(ops, dim=2)
+    heatmap = heatmap.detach().cpu().numpy()
+    predmap = predmap.detach().cpu().numpy()
+    o = overlay(raw_ds.data[100+idx].transpose(1,2,0), (predmap == preds[idx].item())*heatmap)
+
+    return o, predmap
+# %%
+idx = 68
 plot_tensor(im[idx])
 plt.title(classDict[str(lab[idx].item())])
 # %%
-x = tilify(im[idx].unsqueeze(dim=0), tile_size=16)
+model_tile_size = 48
+tilify_tile_size = 48
 # %%
-ops = tile_predict(x, trainer.model, batch_size=1024)
+o, predmap = get_heatmap(idx, tilify_tile_size)
 # %%
-ops = ops.reshape(32,32,10)
-# %%
-heatmap, predmap = torch.max(ops, dim=2)
-heatmap = heatmap.detach().cpu().numpy()
-predmap = predmap.detach().cpu().numpy()
-# %%
-o = overlay(test_dataset.data[idx], (predmap == lab[idx].item())*heatmap)
-# %%
+#plt.figure(figsize=(10,10))
 plt.imshow(o)
+#plt.savefig('truck_cifar10_tile_8_hm.png')
+# %%
 # %%
 
 # %%
 
+# %%
+for idx in range(19):
+    o, predmap = get_heatmap(idx, tilify_tile_size)
+    plt.figure(figsize=(5,5))
+    plt.imshow(o)
+    plt.savefig('96_{}_model_32x16_tile_16_predicted_hm.png'.format(idx))
+# %%
+for idx in range(19):
+    plt.figure(figsize=(5,5))
+    plt.imshow(raw_ds.data[idx].transpose(1,2,0))
+    plt.savefig('96_{}_input.png'.format(idx))
+# %%
+fig, ax = plt.subplots(figsize=(10,10))
+ax.imshow(raw_ds.data[idx])
+cax = ax.imshow(predmap,cmap=plt.cm.tab10, alpha=0.5, interpolation='nearest',vmin=-0.5, vmax=9.5)
+cbar = fig.colorbar(cax, ticks=np.arange(10),fraction=0.046, pad=0.04)
+cbar.ax.set_yticklabels(list(classDict.values()))
+cbar.ax.tick_params(labelsize=20)
+#plt.savefig('lab_plane_pred_plane_heatmap_3.png')
+#plt.colorbar()
+# %%
+plt.figure(figsize=(5,5))
+plt.imshow(raw_ds.data[idx].transpose(1,2,0))
+#plt.savefig('horse.png')
+#plt.savefig('heatmaps_model_vs_tile/{}_input.png'.format(idx), dpi=300)
+# %%
+# 0,  7,  8,  9, 11, 13, 17, 19, 21, 22, 24, 25, 26, 28, 32, 35, 38, 41,
+#          42, 43, 44, 45, 46, 47, 48, 50, 51, 52, 54, 58, 61, 62, 63, 65, 68, 69,
+#          70, 73, 75, 78, 79, 80, 82, 83, 84, 85, 88, 89, 91, 92, 93, 94, 96, 97,
+#          98, 99
 # %%
 for idx, (im,lab) in enumerate(trainer.valloader):
     im,lab = im.to(trainer.device), lab.to(trainer.device)
@@ -339,4 +397,72 @@ x5.shape
 # %%
 x6 = model.avgpool(x5)
 x6.shape
+# %%
+
+# %%
+
+# %%
+
+# %%
+from torchvision import datasets
+# %%
+import numpy as np
+import matplotlib.pyplot as plt
+# %%
+trainset = datasets.CIFAR10('/home/vamshi/datasets/CIFAR_10_data/', download=False, train=True)
+test_dataset = datasets.CIFAR10('/home/vamshi/datasets/CIFAR_10_data/', download=False, train=False)
+# %%
+plt.imshow(trainset.data[12])
+# %%
+i = 5
+j = 3
+t = 12
+plt.figure(figsize=(10,10))
+plt.imshow(test_dataset.data[idx][i:i+t,j:j+t])
+plt.savefig('truck_cifar10_tile1_12.png')
+# %%
+a = plt.imread('boxer.png')
+# %%
+from PIL import Image
+# %%
+b = Image.open('boxer.png')
+# %%
+b.size
+# %%
+c = b.resize((256,256))
+# %%
+d = np.array(c)
+# %%
+plt.figure(figsize=(10,10))
+plt.imshow(np.asarray(c.crop((150,30,214,94)))[:,:,:3])
+plt.savefig('boxer_tile2.png')
+# %%
+# %%
+
+# %%
+trainer.model.load_state_dict(torch.load('saved_models/stl10_cropped_8_resnet18_1_last.pth')['state_dict'])
+trainer.model.to(trainer.device)
+trainer.model.eval()
+# %%
+mtr = Accuracy()
+# %%
+mtr.reset()
+# %%
+for im, lab in trainer.trainloader:
+    im, lab = im.to('cuda'), lab.to('cuda')
+    with torch.no_grad():
+        op = trainer.model(im)
+    mtr.add(op.detach().cpu().numpy(), lab.detach().cpu().numpy())
+# %%
+mtr.value()
+# %%
+x = torch.randn(2,3,30,30).to('cuda')
+# %%
+x1 = trainer.model.block1(x)
+# %%
+x1.shape
+# %%
+x2 = trainer.model.block2(x1)
+# %%
+x2.shape
 # %%

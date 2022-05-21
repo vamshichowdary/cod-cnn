@@ -1,5 +1,6 @@
 import torch
 from torchvision import datasets, transforms
+from torchvision.transforms import InterpolationMode
 
 torch.manual_seed(42)
 
@@ -15,7 +16,7 @@ stl10_train_std = (0.26034098, 0.25657727, 0.27126738)
 tiny_imagenet_mean = (0.04112063, 0.04112063, 0.04112063) ## train
 tiny_imagenet_std = (0.20317943, 0.20317943, 0.20317943)
 
-def get_dataloaders(dataset='cifar10', train_val_split=None, batch_size=32, crop_size=32, shuffle=True, num_workers=8, **dataset_kwargs):
+def get_dataloaders(dataset='cifar10', train_val_split=None, batch_size=32, crop_size=32, train_transform=True, shuffle=True, num_workers=8, **dataset_kwargs):
     """
     Get pytorch dataloaders
     """
@@ -37,8 +38,10 @@ def get_dataloaders(dataset='cifar10', train_val_split=None, batch_size=32, crop
                     transforms.RandomHorizontalFlip(), 
                     transforms.ToTensor(),
                     transforms.Normalize(cifar10_mean, cifar10_std)])
-
-        trainset = datasets.CIFAR10('/home/vamshi/datasets/CIFAR_10_data/', download=False, train=True, transform=crop_hflip(), **dataset_kwargs)
+        if train_transform:
+            trainset = datasets.CIFAR10('/home/vamshi/datasets/CIFAR_10_data/', download=False, train=True, transform=crop_hflip(), **dataset_kwargs)
+        else:
+            trainset = datasets.CIFAR10('/home/vamshi/datasets/CIFAR_10_data/', download=False, train=True, transform=zero_norm(), **dataset_kwargs)
         test_dataset = datasets.CIFAR10('/home/vamshi/datasets/CIFAR_10_data/', download=False, train=False, transform=zero_norm(), **dataset_kwargs)
     elif dataset == 'stl10':
         ## Data transforms
@@ -59,7 +62,10 @@ def get_dataloaders(dataset='cifar10', train_val_split=None, batch_size=32, crop
                     transforms.ToTensor(),
                     transforms.Normalize(stl10_train_mean, stl10_train_std)
                 ])
-        trainset = datasets.STL10('/home/vamshi/datasets/STL10/', download=False, split='train', transform=crop_hflip(), **dataset_kwargs)
+        if train_transform:
+            trainset = datasets.STL10('/home/vamshi/datasets/STL10/', download=False, split='train', transform=crop_hflip(), **dataset_kwargs)
+        else:
+            trainset = datasets.STL10('/home/vamshi/datasets/STL10/', download=False, split='train', transform=zero_norm(), **dataset_kwargs)
         test_dataset = datasets.STL10('/home/vamshi/datasets/STL10/', download=False, split='test', transform=zero_norm(), **dataset_kwargs)
     elif dataset == 'cifar100':
         def zero_norm():

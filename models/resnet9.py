@@ -37,7 +37,7 @@ class ResidualBlock(nn.Module):
             residual = self.downsample(residual)
 
         out = self.relu(out)
-        out += residual
+        out = out + residual
         return out
 
 
@@ -91,10 +91,10 @@ class IncrementalResnet9(nn.Module):
         self.block1 = nn.Sequential(
             nn.Conv2d(in_channels=3, out_channels=64, kernel_size=3, stride=1, padding=1, bias=False),
             nn.BatchNorm2d(num_features=64, momentum=0.9),
-            nn.ReLU(inplace=True),
+            nn.ReLU(inplace=False),
             nn.Conv2d(in_channels=64, out_channels=128, kernel_size=3, stride=1, padding=1, bias=False),
             nn.BatchNorm2d(num_features=128, momentum=0.9),
-            nn.ReLU(inplace=True),
+            nn.ReLU(inplace=False),
             nn.MaxPool2d(kernel_size=2, stride=2),
             ResidualBlock(in_channels=128, out_channels=128, kernel_size=3, stride=1, padding=1),
         )
@@ -106,11 +106,11 @@ class IncrementalResnet9(nn.Module):
             self.block2 = nn.Sequential(
                 nn.Conv2d(in_channels=128, out_channels=256, kernel_size=3, stride=1, padding=1, bias=False),
                 nn.BatchNorm2d(num_features=256, momentum=0.9),
-                nn.ReLU(inplace=True),
+                nn.ReLU(inplace=False),
                 nn.MaxPool2d(kernel_size=2, stride=2),
                 nn.Conv2d(in_channels=256, out_channels=256, kernel_size=3, stride=1, padding=1, bias=False),
                 nn.BatchNorm2d(num_features=256, momentum=0.9),
-                nn.ReLU(inplace=True),
+                nn.ReLU(inplace=False),
                 nn.MaxPool2d(kernel_size=2, stride=2),
                 ResidualBlock(in_channels=256, out_channels=256, kernel_size=3, stride=1, padding=1),
             )
