@@ -22,7 +22,7 @@ def tilify(x, tile_size):
 
     stride = 1
     ## do the tiling
-    tiles = x.unfold(3, tile_size, stride).unfold(2, tile_size, stride)
+    tiles = x.unfold(2, tile_size, stride).unfold(3, tile_size, stride)
     tiles = tiles.contiguous().view(B, C, -1, tile_size, tile_size)
     tiles = tiles.permute(0, 2, 1, 3, 4)
     tiles = tiles.view(-1 , C, tile_size, tile_size)
@@ -35,7 +35,7 @@ def tile_predict(tiles, model, batch_size):
     assert tiles.ndim == 4
     b = batch_size
     ops = []
-    while b <= tiles.shape[0]:
+    while (b - batch_size) < tiles.shape[0]:
         with torch.no_grad():
             op = model( tiles[b - batch_size : min(b, tiles.shape[0])] )
             #op = torch.nn.functional.softmax(op, dim=1)
